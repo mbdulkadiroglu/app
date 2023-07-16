@@ -39,7 +39,7 @@ async function handlePullRequestOpened({octokit, payload}) {
     try {
         const diff_url = payload.pull_request.diff_url;
         const diff = await axios.get(diff_url);
-        const diffText = diff.data;
+        const diffText = await diff.data;
 
         const gptResponse = await openai.createChatCompletion({
             model: "gpt-3.5-turbo",
@@ -53,21 +53,18 @@ async function handlePullRequestOpened({octokit, payload}) {
                     "content" : diffText
                 }
             ],
-            maxTokens: 256,
-            temperature: 0,
-            topP: 1,
-            presencePenalty: 0,
-            frequencyPenalty: 0,
+            temperature: 1,
+            max_tokens: 256,
+            top_p: 1,
+            presence_penalty: 0.0,
+            frequency_penalty: 0.0,
         })
-
-        const message = gptResponse.data.choices[0].text;
-        console.log(message);
 
         await octokit.request("POST /repos/{owner}/{repo}/issues/{issue_number}/comments", {
             owner: payload.repository.owner.login,
             repo: payload.repository.name,
             issue_number: payload.pull_request.number,
-            body: message,
+            body: gptResponse.data.choices[0].message.content,
             headers: {
                 "x-github-api-version": "2022-11-28",
             },
